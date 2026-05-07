@@ -1,0 +1,33 @@
+{
+  "name": "ai-self-healing-framework",
+  "version": "1.0.0",
+  "description": "Self-healing test automation framework with AI/LLM support",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "install:playwright": "playwright install"
+  },
+  "keywords": [
+    "playwright",
+    "self-healing",
+    "automation",
+    "testing",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.4.0",
+    "playwright": "^1.45.0"
+  }
+}

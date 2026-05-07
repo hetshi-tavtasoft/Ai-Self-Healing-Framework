@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@framework/*": ["framework/*"],
+      "@healing/*": ["healing-engine/*"],
+      "@data/*": ["healing-data/*"]
+    }
+  },
+  "include": ["framework/**/*", "healing-engine/**/*"],
+  "exclude": ["node_modules", "dist", "healing-data"]
+}
