@@ -45,6 +45,7 @@ export class RetryEngine {
   ): Promise<boolean> {
     const maxRetries = config.healing.maxRetries;
     const effectivePageName = pageName || this.pageName;
+    const startTime = Date.now();
 
     if (config.healing.enabled) {
       const healed = this.storage.findHealedLocator(originalLocator, effectivePageName);
@@ -55,6 +56,20 @@ export class RetryEngine {
           await action(locator);
           this.storage.incrementSuccessCount(originalLocator, effectivePageName);
           this.logger.info(`Used healed locator: ${healed.healedLocator}`);
+          await this.persistence.saveHealingRecord({
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            testName: effectivePageName || 'unknown',
+            pageName: effectivePageName,
+            originalLocator,
+            healedLocator: healed.healedLocator,
+            confidenceScore: 1.0,
+            healingMethod: 'similarity',
+            status: 'success',
+            timestamp: new Date().toISOString(),
+            url: this.page.url(),
+            successCount: healed.successCount + 1,
+            lastUsed: new Date().toISOString()
+          });
           return true;
         } catch (error) {
           this.logger.warn(`Healed locator failed, trying to re-heal: ${healed.healedLocator}`);
@@ -67,6 +82,20 @@ export class RetryEngine {
         const locator = this.page.locator(originalLocator);
         await locator.first().waitFor({ timeout: config.timeout.action || 5000 });
         await action(locator);
+        await this.persistence.saveHealingRecord({
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          testName: effectivePageName || 'unknown',
+          pageName: effectivePageName,
+          originalLocator,
+          healedLocator: originalLocator,
+          confidenceScore: 1.0,
+          healingMethod: 'direct',
+          status: 'success',
+          timestamp: new Date().toISOString(),
+          url: this.page.url(),
+          successCount: 1,
+          lastUsed: new Date().toISOString()
+        });
         return true;
       } catch (error) {
         this.logger.warn(`Locator failed (attempt ${attempt + 1}/${maxRetries}): ${originalLocator}`);
@@ -98,6 +127,20 @@ export class RetryEngine {
     const failure = await this.analyzer.captureFailure(locator, error.message);
     this.logger.error(`Locator failed permanently: ${locator}`, failure);
     this.storage.saveFailedLocator({ ...failure, pageName });
+    await this.persistence.saveHealingRecord({
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      testName: pageName || 'unknown',
+      pageName,
+      originalLocator: locator,
+      healedLocator: '',
+      confidenceScore: 0,
+      healingMethod: 'similarity',
+      status: 'failed',
+      timestamp: new Date().toISOString(),
+      url: this.page.url(),
+      successCount: 0,
+      lastUsed: new Date().toISOString()
+    });
   }
 
   private async attemptHealing(originalLocator: string, pageName: string): Promise<string | null> {

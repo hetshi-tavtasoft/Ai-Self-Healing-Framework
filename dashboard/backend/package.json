@@ -4,8 +4,8 @@
   "description": "Backend API for Self-Healing Framework Dashboard",
   "main": "server.js",
   "scripts": {
-    "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts",
+    "start": "node server.js",
+    "dev": "node server.js",
     "build": "tsc"
   },
   "dependencies": {

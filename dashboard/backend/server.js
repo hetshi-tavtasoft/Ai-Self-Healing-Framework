@@ -163,7 +163,6 @@ app.get('/api/runs/:runId', (req, res) => {
     res.status(500).json({ error: 'Failed to fetch run data' });
   }
 });
-
 app.listen(PORT, () => {
   console.log(`Healing Dashboard Backend running on http://localhost:${PORT}`);
 });
