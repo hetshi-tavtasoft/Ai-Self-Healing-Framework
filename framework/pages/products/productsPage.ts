@@ -1,29 +1,29 @@
-import { type Page, type Locator } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { BasePage } from '../BasePage';
 
-export class ProductPage {
-  readonly page: Page;
-  readonly sortingField: Locator;
-  readonly sortingDropdown: Locator;
-  readonly price: Locator;
-  readonly title: Locator;
-  readonly cartContainer: Locator;
+export class ProductPage extends BasePage {
+  readonly sortingField: string;
+  readonly sortingDropdown: string;
+  readonly price: string;
+  readonly title: string;
+  readonly cartContainer: string;
 
   constructor(page: Page) {
-    this.page = page;
-    this.sortingField = page.locator('.product_sort_container');
-    this.sortingDropdown = page.locator('.product_sort_container');
-    this.price = page.locator('inventory-item-price');
-    this.title = page.locator('.title');
-    this.cartContainer = page.locator('a[class="shopping_cart_link"]');
+    super(page, 'ProductPage');
+    this.sortingField = '.product_sort_container';
+    this.sortingDropdown = '.product_sort_container';
+    this.price = '.inventory_item_price';
+    this.title = '.title';
+    this.cartContainer = 'a.shopping_cart_link';
   }
 
   async clickOnSortingContainer(): Promise<void> {
-    await this.sortingField.waitFor({ state: 'visible' });
-    await this.sortingField.click();
+    await this.waitForVisible(this.sortingField, 'sorting field');
+    await this.click(this.sortingField, 'sorting field');
   }
 
   async selectSortingOption(optionText: string): Promise<void> {
-    await this.sortingDropdown.selectOption({ label: optionText });
+    await this.selectOption(this.sortingDropdown, optionText, 'sorting dropdown');
   }
 
   async getPriceAndClickOnAddToCartButton(): Promise<number> {
@@ -47,10 +47,10 @@ export class ProductPage {
   }
 
   async clickOnCartContainer(): Promise<void> {
-    await this.cartContainer.click();
+    await this.click(this.cartContainer, 'cart container');
   }
 
   async getTitleText(): Promise<string> {
-    return (await this.title.first().textContent()) ?? '';
+    return await this.getText(this.title, 'title');
   }
 }

@@ -1,15 +1,15 @@
-import { type Page, type Locator } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { BasePage } from '../BasePage';
 
-export class CheckoutComplete {
-  readonly page: Page;
-  readonly title: Locator;
+export class CheckoutComplete extends BasePage {
+  readonly title: string;
 
   constructor(page: Page) {
-    this.page = page;
-    this.title = page.locator('.complete-header');
+    super(page, 'CheckoutCompletePage');
+    this.title = '.complete-header';
   }
 
   async getTitleText(): Promise<string> {
-    return (await this.title.first().textContent()) ?? '';
+    return await this.getText(this.title, 'title');
   }
 }

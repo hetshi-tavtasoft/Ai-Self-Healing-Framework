@@ -1,4 +1,5 @@
-import { type Page, type Locator } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { BasePage } from '../BasePage';
 
 export interface UserDetails {
   firstname: string;
@@ -6,34 +7,33 @@ export interface UserDetails {
   zipcode: string;
 }
 
-export class CheckoutInformation {
-  readonly page: Page;
-  readonly title: Locator;
-  readonly firstName: Locator;
-  readonly lastName: Locator;
-  readonly zipcode: Locator;
-  readonly continueButton: Locator;
+export class CheckoutInformation extends BasePage {
+  readonly title: string;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly zipcode: string;
+  readonly continueButton: string;
 
   constructor(page: Page) {
-    this.page = page;
-    this.title = page.locator('.title');
-    this.firstName = page.locator('#first-name');
-    this.lastName = page.locator('#last-name');
-    this.zipcode = page.locator('#postal-code');
-    this.continueButton = page.locator('#continue');
+    super(page, 'CheckoutInformationPage');
+    this.title = '.title';
+    this.firstName = '#first-name';
+    this.lastName = '#last-name';
+    this.zipcode = '#postal-code';
+    this.continueButton = '#continue';
   }
 
   async getTitleText(): Promise<string> {
-    return (await this.title.first().textContent()) ?? '';
+    return await this.getText(this.title, 'title');
   }
 
   async enterDetails(data: UserDetails): Promise<void> {
-    await this.firstName.fill(data.firstname);
-    await this.lastName.fill(data.lastname);
-    await this.zipcode.fill(data.zipcode);
+    await this.fill(this.firstName, data.firstname, 'first name');
+    await this.fill(this.lastName, data.lastname, 'last name');
+    await this.fill(this.zipcode, data.zipcode, 'zip code');
   }
 
   async clickOnContinueButton(): Promise<void> {
-    await this.continueButton.click();
+    await this.click(this.continueButton, 'continue button');
   }
 }

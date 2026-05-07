@@ -1,0 +1,47 @@
+services:
+  framework:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: self-healing-framework
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./healing-data:/app/healing-data
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+    networks:
+      - healing-network
+
+  backend:
+    build:
+      context: ./dashboard/backend
+      dockerfile: Dockerfile
+    container_name: healing-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./healing-data:/app/healing-data
+    networks:
+      - healing-network
+    depends_on:
+      - framework
+
+  frontend:
+    build:
+      context: ./dashboard/frontend
+      dockerfile: Dockerfile
+    container_name: healing-frontend
+    ports:
+      - "5173:80"
+    networks:
+      - healing-network
+    depends_on:
+      - backend
+
+networks:
+  healing-network:
+    driver: bridge

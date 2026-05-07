@@ -1,5 +1,5 @@
 export const config = {
-  baseUrl: process.env.BASE_URL || 'https://example.com',
+  baseUrl: process.env.BASE_URL || 'https://www.saucedemo.com',
   timeout: {
     default: 30000,
     action: 10000,
@@ -18,9 +18,9 @@ export const config = {
     healingLogs: true
   },
   ai: {
-    enabled: false,
+    enabled: true,
     provider: 'openai',
-    model: 'gpt-4',
+    model: 'gpt-4-turbo',
     apiKey: process.env.OPENAI_API_KEY || ''
   }
 };
