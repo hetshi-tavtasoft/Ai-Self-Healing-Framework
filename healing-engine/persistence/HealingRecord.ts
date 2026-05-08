@@ -5,7 +5,7 @@ export interface HealingRecord {
   originalLocator: string;
   healedLocator: string;
   confidenceScore: number;
-  healingMethod: 'similarity' | 'ai' | 'unknown';
+  healingMethod: 'similarity' | 'ai' | 'unknown' | 'direct';
   status: 'success' | 'failed' | 'pending';
   timestamp: string;
   screenshot?: string;

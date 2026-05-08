@@ -9,6 +9,7 @@ export const config = {
     enabled: true,
     maxRetries: 3,
     similarityThreshold: 0.7,
+    autoFixSource: true,
     strategies: ['id', 'class', 'text', 'css', 'xpath']
   },
   reporting: {

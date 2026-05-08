@@ -1,4 +1,6 @@
 import { Page, Locator } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 import { LocatorAnalyzer, LocatorFailure } from '../locator-analyzer/LocatorAnalyzer';
 import { DomParser, DomElement } from '../dom-parser/DomParser';
 import { SimilarityEngine, ScoredCandidate } from '../similarity-engine/SimilarityEngine';
@@ -80,7 +82,7 @@ export class RetryEngine {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const locator = this.page.locator(originalLocator);
-        await locator.first().waitFor({ timeout: config.timeout.action || 5000 });
+        await locator.first().waitFor({ timeout: 2000 });
         await action(locator);
         await this.persistence.saveHealingRecord({
           id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -115,8 +117,6 @@ export class RetryEngine {
           await this.handleLocatorFailure(originalLocator, error as Error, effectivePageName);
           return false;
         }
-
-        await this.page.waitForTimeout(1000);
       }
     }
 
@@ -153,66 +153,117 @@ export class RetryEngine {
       this.storage.saveDomSnapshot(pageName, domSnapshot);
 
       const failedElement = await this.domParser.getElementBySelector(originalLocator);
-      if (!failedElement) {
-        this.logger.warn('Could not parse failed element');
-        return null;
-      }
 
-      const candidateLocators = await this.domParser.getCandidateLocators(failedElement);
-      if (candidateLocators.length === 0) {
-        this.logger.warn('No similar elements found');
-        return null;
-      }
+      let similaritySucceeded = false;
 
-      const scoredCandidate = this.similarityEngine.findBestMatchWithDetails(
-        failedElement,
-        await this.domParser.parseDomSnapshot(domSnapshot),
-        config.healing.similarityThreshold
-      );
+      if (failedElement) {
+        const candidateLocators = await this.domParser.getCandidateLocators(failedElement);
+        if (candidateLocators.length > 0) {
+          const scoredCandidate = this.similarityEngine.findBestMatchWithDetails(
+            failedElement,
+            await this.domParser.parseDomSnapshot(domSnapshot),
+            config.healing.similarityThreshold
+          );
 
-      if (scoredCandidate) {
-        this.logger.info(`Found healed locator: ${scoredCandidate.locator} (score: ${scoredCandidate.score})`);
-        
-        const validationResult = await this.validator.validate(
-          scoredCandidate.locator,
-          undefined,
-          { requireVisible: true, requireClickable: false, requireUnique: true }
-        );
-        
-        if (validationResult.isValid) {
-          this.logger.info(`Healed locator validated: ${scoredCandidate.locator}`);
-          const healedEntry: HealedLocator = {
-            originalLocator,
-            healedLocator: scoredCandidate.locator,
-            url: this.page.url(),
-            pageName,
-            timestamp: new Date().toISOString(),
-            successCount: 0
-          };
-          this.storage.saveHealedLocator(healedEntry);
-          
-          await this.persistence.saveHealingRecord({
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            testName: pageName || 'unknown',
-            pageName,
-            originalLocator,
-            healedLocator: scoredCandidate.locator,
-            confidenceScore: scoredCandidate.score,
-            healingMethod: 'similarity',
-            status: 'success',
-            timestamp: new Date().toISOString(),
-            url: this.page.url(),
-            successCount: 0,
-            lastUsed: new Date().toISOString()
-          });
+          if (scoredCandidate) {
+            this.logger.info(`Found healed locator: ${scoredCandidate.locator} (score: ${scoredCandidate.score})`);
+            
+            const validationResult = await this.validator.validate(
+              scoredCandidate.locator,
+              undefined,
+              { requireVisible: true, requireClickable: false, requireUnique: true }
+            );
+            
+            if (validationResult.isValid) {
+              this.logger.info(`Healed locator validated: ${scoredCandidate.locator}`);
+              const healedEntry: HealedLocator = {
+                originalLocator,
+                healedLocator: scoredCandidate.locator,
+                url: this.page.url(),
+                pageName,
+                timestamp: new Date().toISOString(),
+                lastUsed: new Date().toISOString(),
+                successCount: 0
+              };
+              this.storage.saveHealedLocator(healedEntry);
+              
+              await this.persistence.saveHealingRecord({
+                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                testName: pageName || 'unknown',
+                pageName,
+                originalLocator,
+                healedLocator: scoredCandidate.locator,
+                confidenceScore: scoredCandidate.score,
+                healingMethod: 'similarity',
+                status: 'success',
+                timestamp: new Date().toISOString(),
+                url: this.page.url(),
+                successCount: 0,
+                lastUsed: new Date().toISOString()
+              });
 
-          return scoredCandidate.locator;
+              similaritySucceeded = true;
+              this.autoFixSourceFile(originalLocator, scoredCandidate.locator, pageName);
+              this.storage.cleanupDomSnapshots(pageName);
+              return scoredCandidate.locator;
+            } else {
+              this.logger.warn(`Similarity candidate failed validation: ${scoredCandidate.locator} - ${validationResult.reason}`);
+            }
+          }
         } else {
-          this.logger.warn(`Similarity candidate failed validation: ${scoredCandidate.locator} - ${validationResult.reason}`);
+          this.logger.warn('No similar elements found via similarity engine');
+        }
+      } else {
+        this.logger.warn('Could not find failed element - trying locator string similarity');
+        const allElements = await this.domParser.parseDomSnapshot(domSnapshot);
+        const candidateLocators: string[] = [];
+        for (const el of allElements) {
+          const loc = this.domParser.buildLocator(el);
+          if (loc && !candidateLocators.includes(loc)) {
+            candidateLocators.push(loc);
+          }
+        }
+        const bestMatch = this.similarityEngine.findBestMatch(originalLocator, candidateLocators, config.healing.similarityThreshold);
+        if (bestMatch) {
+          this.logger.info(`Found healed locator via string similarity: ${bestMatch}`);
+          const validationResult = await this.validator.validate(
+            bestMatch,
+            undefined,
+            { requireVisible: true, requireClickable: false, requireUnique: true }
+          );
+          if (validationResult.isValid) {
+            const healedEntry: HealedLocator = {
+              originalLocator,
+              healedLocator: bestMatch,
+              url: this.page.url(),
+              pageName,
+              timestamp: new Date().toISOString(),
+              lastUsed: new Date().toISOString(),
+              successCount: 0
+            };
+            this.storage.saveHealedLocator(healedEntry);
+            await this.persistence.saveHealingRecord({
+              id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              testName: pageName || 'unknown',
+              pageName,
+              originalLocator,
+              healedLocator: bestMatch,
+              confidenceScore: 0.8,
+              healingMethod: 'similarity',
+              status: 'success',
+              timestamp: new Date().toISOString(),
+              url: this.page.url(),
+              successCount: 0,
+              lastUsed: new Date().toISOString()
+            });
+            this.autoFixSourceFile(originalLocator, bestMatch, pageName);
+            this.storage.cleanupDomSnapshots(pageName);
+            return bestMatch;
+          }
         }
       }
 
-      if (this.aiEngine.isEnabled()) {
+      if (!similaritySucceeded && this.aiEngine.isEnabled()) {
         const suggestion = await this.aiEngine.getHealingSuggestion(
           originalLocator,
           domSnapshot,
@@ -235,6 +286,7 @@ export class RetryEngine {
               url: this.page.url(),
               pageName,
               timestamp: new Date().toISOString(),
+              lastUsed: new Date().toISOString(),
               successCount: 0
             };
             this.storage.saveHealedLocator(healedEntry);
@@ -254,6 +306,8 @@ export class RetryEngine {
               lastUsed: new Date().toISOString()
             });
 
+            this.autoFixSourceFile(originalLocator, suggestion.suggestedLocator, pageName);
+            this.storage.cleanupDomSnapshots(pageName);
             return suggestion.suggestedLocator;
           } else {
             this.logger.warn(`AI suggested locator failed validation: ${suggestion.suggestedLocator} - ${validationResult.reason}`);
@@ -265,5 +319,35 @@ export class RetryEngine {
     }
 
     return null;
+  }
+
+  private autoFixSourceFile(originalLocator: string, healedLocator: string, pageName: string): void {
+    if (!config.healing.autoFixSource) return;
+    const pagesDir = path.resolve(__dirname, '../../framework/pages');
+    if (!fs.existsSync(pagesDir)) return;
+    this.replaceInFiles(pagesDir, originalLocator, healedLocator, pageName);
+  }
+
+  private replaceInFiles(dir: string, original: string, healed: string, pageName: string): void {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        this.replaceInFiles(fullPath, original, healed, pageName);
+      } else if (entry.name.endsWith('.ts')) {
+        try {
+          let content = fs.readFileSync(fullPath, 'utf-8');
+          if (content.includes(original)) {
+            const escaped = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const re = new RegExp(escaped, 'g');
+            const newContent = content.replace(re, healed);
+            fs.writeFileSync(fullPath, newContent, 'utf-8');
+            this.logger.info(`Auto-fixed source file: ${fullPath} -- replaced "${original}" with "${healed}"`);
+          }
+        } catch {
+          // skip files that can't be read
+        }
+      }
+    }
   }
 }

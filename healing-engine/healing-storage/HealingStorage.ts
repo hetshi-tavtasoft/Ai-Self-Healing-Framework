@@ -7,6 +7,7 @@ export interface HealedLocator {
   url: string;
   pageName: string;
   timestamp: string;
+  lastUsed?: string;
   successCount: number;
 }
 
@@ -84,9 +85,23 @@ export class HealingStorage {
     fs.writeFileSync(failedPath, JSON.stringify(failed, null, 2));
   }
 
-  saveDomSnapshot(pageName: string, dom: string): void {
+  saveDomSnapshot(pageName: string, dom: string): string {
     const filePath = path.join(this.domSnapshotsPath, `${pageName}_${Date.now()}.html`);
     fs.writeFileSync(filePath, dom);
+    return filePath;
+  }
+
+  cleanupDomSnapshots(pageName: string): void {
+    if (!fs.existsSync(this.domSnapshotsPath)) return;
+    const files = fs.readdirSync(this.domSnapshotsPath)
+      .filter(f => f.startsWith(pageName) && f.endsWith('.html'));
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(this.domSnapshotsPath, file));
+      } catch {
+        // skip
+      }
+    }
   }
 
   incrementSuccessCount(originalLocator: string, pageName: string): void {
@@ -96,7 +111,7 @@ export class HealingStorage {
     );
     if (entry) {
       entry.successCount = (entry.successCount || 0) + 1;
-      entry.timestamp = new Date().toISOString();
+      entry.lastUsed = new Date().toISOString();
       fs.writeFileSync(this.healedLocatorsPath, JSON.stringify(locators, null, 2));
     }
   }

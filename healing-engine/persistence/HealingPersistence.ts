@@ -30,18 +30,21 @@ export class HealingPersistence {
     const historyDir = path.join(this.healingDataDir, 'healing-history');
     if (!fs.existsSync(historyDir)) return;
 
-    const files = fs.readdirSync(historyDir).filter(f => f.endsWith('.json'));
-    const currentFile = `${this.currentRunId}.json`;
-    files.forEach(file => {
-      if (file !== currentFile) {
+    const MAX_RUNS = 10;
+    const files = fs.readdirSync(historyDir)
+      .filter(f => f.endsWith('.json'))
+      .sort()
+      .reverse();
+
+    if (files.length > MAX_RUNS) {
+      files.slice(MAX_RUNS).forEach(file => {
         try {
-          const filePath = path.join(historyDir, file);
-          fs.unlinkSync(filePath);
+          fs.unlinkSync(path.join(historyDir, file));
         } catch {
           // Skip files that can't be deleted
         }
-      }
-    });
+      });
+    }
   }
 
   async saveHealingRecord(record: HealingRecord): Promise<void> {

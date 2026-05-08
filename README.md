@@ -1,11 +1,12 @@
 # AI Self-Healing Framework
 
-A Playwright-based test automation framework with an intelligent self-healing engine that automatically detects and fixes broken locators during test execution. When UI changes cause element selectors to fail, the healing engine analyzes the DOM, scores alternative locators via similarity algorithms and optional OpenAI GPT suggestions, validates replacements, and caches them for future runs.
+A Playwright-based test automation framework with an intelligent self-healing engine that automatically detects and fixes broken locators during test execution. When UI changes cause element selectors to fail, the healing engine analyzes the DOM, scores alternative locators via similarity algorithms and optional OpenAI GPT suggestions, validates replacements, caches them for future runs, and can even auto-fix page object source files.
 
 ## Features
 
-- **Self-Healing Engine** — Automatically detects locator failures, parses the live DOM, finds alternative elements, scores candidates using string similarity analysis, and retries with the best match
+- **Self-Healing Engine** — Automatically detects locator failures, parses the live DOM, finds alternative elements, scores candidates using string similarity (ID/class/text/tag), and retries with the best match
 - **AI-Powered Healing (Optional)** — Integrates with OpenAI GPT to suggest intelligent locator repairs based on error context and DOM structure
+- **Auto-Fix Source Files** — Automatically rewrites page object `.ts` files with healed locators so fixes persist permanently
 - **Page Object Model** — Clean, typed page object classes with transparent healing injection through `BasePage`
 - **Monitoring Dashboard** — React + Express dashboard visualizing healing history, success rates, flaky locators, and per-page statistics
 - **Dockerized** — Full orchestration via Docker Compose: test runner, API backend, and frontend SPA
@@ -15,41 +16,77 @@ A Playwright-based test automation framework with an intelligent self-healing en
 
 ```
 ai-self-healing-framework/
-├── framework/               # Core test framework
-│   ├── config/              # Central configuration (timeouts, healing settings, AI provider)
-│   ├── fixtures/            # Playwright fixtures & UI constants
-│   ├── pages/               # Page Object Models (BasePage with healing integration)
-│   ├── tests/               # Test specs (E2E flow + healing demo)
-│   └── utils/               # Logger, locator helpers, test data factories
-├── healing-engine/           # Self-healing system
-│   ├── retry-engine/        # Central orchestrator — tries original locator, triggers healing on failure
-│   ├── locator-analyzer/    # Captures failure details and DOM snapshots
-│   ├── dom-parser/          # Parses DOM with cheerio, extracts candidates
-│   ├── similarity-engine/   # Scores candidates (ID, class, text, tag) with string-similarity
-│   ├── healing-validator/   # Validates healed locators (exists, visible, unique, clickable)
-│   ├── ai-engine/           # OpenAI GPT integration for AI-suggested locators
-│   ├── healing-storage/     # JSON file-based persistence for healed/failed locators
-│   └── persistence/         # Run history, summary stats, flaky detection
+├── framework/                    # Core test framework
+│   ├── config/
+│   │   └── config.ts             # Central configuration (timeouts, healing, AI provider)
+│   ├── fixtures/
+│   │   ├── constant.ts           # UI text constants for SauceDemo assertions
+│   │   └── pageFixtures.ts       # Playwright custom fixtures with page object injection
+│   ├── pages/
+│   │   ├── BasePage.ts           # Abstract base with healing-enabled wrappers (click, fill, etc.)
+│   │   ├── login/loginPage.ts
+│   │   ├── products/productsPage.ts
+│   │   ├── yourCart/yourCartPage.ts
+│   │   ├── checkout/checkoutInformationPage.ts
+│   │   ├── checkout/checkoutOverviewPage.ts
+│   │   └── checkout/checkoutCompletePage.ts
+│   ├── tests/
+│   │   ├── e2eTest.spec.ts       # Full purchase E2E flow: login → sort → cart → checkout → verify
+│   │   └── healingDemo.spec.ts   # Demonstrates healing engine with intentionally broken locators
+│   └── utils/
+│       ├── logger.ts             # Singleton logger (INFO, WARN, ERROR, DEBUG)
+│       ├── locatorHelper.ts      # Locator utility wrapper
+│       ├── testData/testData.ts  # Static SauceDemo credentials
+│       └── dataFactory/userData.ts # Faker-generated checkout data
+├── healing-engine/                # Self-healing system
+│   ├── retry-engine/
+│   │   └── RetryEngine.ts        # Central orchestrator — cache check, retries, healing pipeline, auto-fix
+│   ├── locator-analyzer/
+│   │   └── LocatorAnalyzer.ts    # Captures failure details and DOM snapshots
+│   ├── dom-parser/
+│   │   └── DomParser.ts          # Parses DOM with cheerio, extracts candidates and locators
+│   ├── similarity-engine/
+│   │   └── SimilarityEngine.ts   # Scores candidates (ID 40%, class 30%, text 20%, tag 10%)
+│   ├── healing-validator/
+│   │   └── HealingValidator.ts   # Validates healed locators (exists, visible, unique, clickable)
+│   ├── ai-engine/
+│   │   └── AIEngine.ts           # OpenAI GPT integration for AI-suggested locators
+│   ├── healing-storage/
+│   │   └── HealingStorage.ts     # JSON file-based persistence for healed/failed locators + snapshots
+│   └── persistence/
+│       ├── HealingRecord.ts      # TypeScript interfaces for healing events and run summaries
+│       └── HealingPersistence.ts # Run history, summary stats, flaky detection, screenshot capture
 ├── dashboard/
-│   ├── backend/             # Express REST API serving healing data
-│   └── frontend/            # React SPA with charts and healing record tables
-├── healing-data/            # Runtime data (healed locators, snapshots, history)
-├── playwright-report/       # Generated HTML/JSON test reports
-└── test-results/            # Test run artifacts (screenshots, videos, traces)
+│   ├── backend/                  # Express REST API serving healing data (port 3000)
+│   └── frontend/                 # React + Vite + Tailwind + Recharts SPA (port 5173)
+├── healing-data/                  # Runtime data (healed locators, snapshots, history)
+├── playwright-report/             # Generated HTML/JSON test reports
+├── test-results/                  # Test run artifacts (screenshots, videos, traces)
+├── docker-compose.yml             # 3-service orchestration
+├── Dockerfile                     # Test runner container (mcr.microsoft.com/playwright)
+├── playwright.config.ts           # Playwright config (Chromium, Firefox, WebKit)
+├── tsconfig.json                  # TypeScript strict config with path aliases
+└── package.json                   # Dependencies: playwright, cheerio, openai, string-similarity, faker
 ```
 
 ### How Healing Works
 
 ```
-Action fails
-  → Check cache for previously healed locators
-  → Capture failure details + DOM snapshot
-  → Parse DOM with cheerio → find similar elements
-  → Score candidates with string-similarity (ID 40%, class 30%, text 20%, tag 10%)
-  → [Optional] Ask GPT for AI-suggested repair
-  → Validate best candidate (exists, visible, unique, clickable)
-  → Store healed locator for future use
-  → Retry the action with healed locator
+Action fails (click, fill, etc.)
+  → Check cache for previously healed locator
+  → Retry original locator up to maxRetries times
+  → If all retries fail, trigger healing pipeline:
+      1. LocatorAnalyzer captures failure details + DOM snapshot
+      2. DomParser finds the failed element in the DOM
+      3. If found → SimilarityEngine scores candidates (ID/class/text/tag)
+      4. If NOT found → SimilarityEngine uses string-similarity on all DOM elements
+      5. HealingValidator checks best candidate (exists, visible, unique, clickable)
+      6. [Optional] If similarity fails → AIEngine asks GPT for a suggestion
+      7. Save healed locator to storage
+      8. Auto-fix page object source file with new locator
+      9. Clean up old DOM snapshots
+  → Retry action with healed locator
+  → If everything fails, save failed locator record
 ```
 
 ## Tech Stack
@@ -58,10 +95,10 @@ Action fails
 |-----------|-----------|
 | Test Runner | Playwright + TypeScript |
 | DOM Parsing | cheerio |
-| Similarity Scoring | string-similarity |
+| Similarity Scoring | string-similarity + Levenshtein distance |
 | AI Engine | OpenAI GPT (optional) |
 | Dashboard API | Express.js + TypeScript |
-| Dashboard UI | React + Vite + Recharts |
+| Dashboard UI | React 19 + Vite + Tailwind CSS 4 + Recharts |
 | Containerization | Docker / Docker Compose |
 | Test Data | @faker-js/faker |
 
@@ -97,11 +134,14 @@ Key settings in `framework/config/config.ts`:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `healing.enabled` | `true` | Enable/disable healing engine |
-| `healing.maxRetries` | `3` | Max retry attempts per locator |
-| `healing.similarityThreshold` | `0.6` | Minimum similarity score (0-1) |
-| `healing.strategies` | `['similarity']` | Healing strategies: `similarity`, `ai` |
+| `healing.maxRetries` | `3` | Max retry attempts per locator before healing |
+| `healing.similarityThreshold` | `0.7` | Minimum similarity score (0-1) |
+| `healing.strategies` | `['id', 'class', 'text', 'css', 'xpath']` | Locator types to try during healing |
+| `healing.autoFixSource` | `true` | Auto-rewrite page object `.ts` files with healed locators |
+| `ai.enabled` | `true` | Enable AI-powered healing fallback |
 | `ai.provider` | `'openai'` | AI provider |
-| `ai.model` | `'gpt-4'` | AI model for locator suggestions |
+| `ai.model` | `'gpt-4-turbo'` | AI model for locator suggestions |
+| `baseUrl` | `https://www.saucedemo.com` | Target application URL |
 
 ### Running Tests
 
@@ -122,34 +162,34 @@ This starts three services:
 
 | Service | Port | Description |
 |---------|------|-------------|
-| `self-healing-framework` | — | Runs tests with healing engine |
-| `healing-backend` | `3000` | Express REST API |
-| `healing-frontend` | `5173` | React monitoring dashboard |
+| `framework` | — | Runs tests with healing engine |
+| `backend` | `3000` | Express REST API |
+| `frontend` | `5173` (maps to `:80`) | React monitoring dashboard |
 
-## Test Structure
+## Healing Pipeline Details
 
-- **Page Object Model** — All page interactions inherit from `BasePage`, which wraps Playwright actions through the `RetryEngine` for transparent healing
-- **Custom Fixtures** — Playwright fixtures inject page objects directly into test specs
-- **Test Data** — Static credentials for SauceDemo + dynamic Faker-generated checkout data
+The healing engine scores candidate locators using four weighted criteria:
 
-### Test Files
+| Criterion | Weight | Description |
+|-----------|--------|-------------|
+| ID Match | 40% | Exact or partial ID attribute match |
+| Class Match | 30% | Average similarity across all CSS classes |
+| Text Match | 20% | Visible text content similarity |
+| Tag Match | 10% | Same HTML tag type |
 
-| File | Description |
-|------|-------------|
-| `framework/tests/e2eTest.spec.ts` | Full purchase E2E flow: login → sort → add to cart → checkout → verify |
-| `framework/tests/healingDemo.spec.ts` | Demonstration of healing engine with intentionally broken locators |
+When the failed element cannot be found in the DOM at all (e.g., the page structure changed completely), the engine falls back to a global string similarity search across all DOM elements.
 
 ## Dashboard API Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/health` | Health check |
-| `GET /api/healings` | All healing records |
-| `GET /api/healings/summary` | Aggregate statistics |
-| `GET /api/healings/flaky` | Flaky locator report |
-| `GET /api/runs` | All test runs |
-| `GET /api/runs/:runId` | Specific run details |
+| `GET /api/healings` | All healing records (sorted newest-first) |
+| `GET /api/healings/summary` | Aggregate statistics (total, success rate, per-page, per-method) |
+| `GET /api/healings/flaky?threshold=10` | Flaky locator report |
+| `GET /api/runs` | All test run IDs |
+| `GET /api/runs/:runId` | Specific run details and healing records |
 
 ## Project Status
 
-The framework is fully functional with the healing pipeline implemented. The `healing-data/` directory is populated at runtime during test execution. The dashboard provides real-time visibility into healing events and test run history.
+Fully functional with the complete healing pipeline implemented. The `healing-data/` directory is populated at runtime during test execution. The dashboard auto-polls every 5 seconds for real-time visibility into healing events and test run history. The auto-fix source feature permanently corrects broken locators in page object files.

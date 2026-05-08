@@ -112,7 +112,7 @@ export class DomParser {
     return false;
   }
 
-  private buildLocator(element: DomElement): string | null {
+  buildLocator(element: DomElement): string | null {
     if (element.id) {
       return `#${element.id}`;
     }

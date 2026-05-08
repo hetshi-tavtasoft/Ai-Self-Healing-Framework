@@ -1,0 +1,11 @@
+[
+  {
+    "originalLocator": ".product_sortcntainer",
+    "healedLocator": ".product_sort_container",
+    "url": "https://www.saucedemo.com/inventory.html",
+    "pageName": "ProductPage",
+    "timestamp": "2026-05-08T04:12:11.488Z",
+    "lastUsed": "2026-05-08T04:12:11.536Z",
+    "successCount": 1
+  }
+]
