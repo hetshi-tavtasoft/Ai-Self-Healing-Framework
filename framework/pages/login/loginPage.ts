@@ -12,7 +12,7 @@ export class LoginPage extends BasePage {
     this.usernameInput = '#user-name';
     this.passwordInput = '#password';
     this.loginButton = '#login-button';
-    this.title = '.login_container div.login_logo';
+    this.title = '.login_logo';
   }
 
   async navigate(): Promise<void> {
