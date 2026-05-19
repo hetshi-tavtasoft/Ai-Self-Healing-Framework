@@ -29,8 +29,14 @@ export class LoginPage extends BasePage {
   }
 
   async clickLogin(): Promise<void> {
-    await this.click(this.loginButton, 'login button');
-    await this.page.waitForURL('**/inventory.html');
+    await this.click(this.loginButton, 'login button', async () => {
+      try {
+        await this.page.waitForURL('**/inventory.html', { timeout: 3000 });
+        return true;
+      } catch {
+        return false;
+      }
+    });
   }
 
   async loginToSwagLabs(username: string, password: string): Promise<void> {

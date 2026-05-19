@@ -21,7 +21,7 @@ export const config = {
   ai: {
     enabled: true,
     provider: 'openai',
-    model: 'gpt-4-turbo',
+    model: 'gpt-4o-mini',
     apiKey: process.env.OPENAI_API_KEY || ''
   }
 };

@@ -15,11 +15,11 @@ export abstract class BasePage {
     this.logger = Logger.getInstance();
   }
 
-  protected async click(locator: string, description?: string): Promise<void> {
+  protected async click(locator: string, description?: string, postActionCheck?: () => Promise<boolean>): Promise<void> {
     this.logger.debug(`Clicking: ${description || locator}`);
     await this.retryEngine.findElementWithRetry(locator, async (loc) => {
       await loc.click();
-    }, this.pageName);
+    }, this.pageName, postActionCheck);
   }
 
   protected async fill(locator: string, value: string, description?: string): Promise<void> {

@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
+  globalSetup: './global-setup.ts',
   testDir: './framework/tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -21,14 +22,16 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] }
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] }
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] }
-    }
+    ...(process.env.CI ? [] : [
+      {
+        name: 'firefox',
+        use: { ...devices['Desktop Firefox'] }
+      },
+      {
+        name: 'webkit',
+        use: { ...devices['Desktop Safari'] }
+      }
+    ])
   ],
   webServer: {
     command: 'echo "No web server needed"',

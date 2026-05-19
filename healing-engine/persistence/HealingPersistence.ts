@@ -10,7 +10,6 @@ export class HealingPersistence {
     this.healingDataDir = path.resolve(__dirname, '../../healing-data');
     this.currentRunId = `run-${Date.now()}`;
     this.ensureDirectories();
-    this.cleanupOldRuns();
   }
 
   private ensureDirectories(): void {
@@ -24,27 +23,6 @@ export class HealingPersistence {
         fs.mkdirSync(dir, { recursive: true });
       }
     });
-  }
-
-  private cleanupOldRuns(): void {
-    const historyDir = path.join(this.healingDataDir, 'healing-history');
-    if (!fs.existsSync(historyDir)) return;
-
-    const MAX_RUNS = 10;
-    const files = fs.readdirSync(historyDir)
-      .filter(f => f.endsWith('.json'))
-      .sort()
-      .reverse();
-
-    if (files.length > MAX_RUNS) {
-      files.slice(MAX_RUNS).forEach(file => {
-        try {
-          fs.unlinkSync(path.join(historyDir, file));
-        } catch {
-          // Skip files that can't be deleted
-        }
-      });
-    }
   }
 
   async saveHealingRecord(record: HealingRecord): Promise<void> {

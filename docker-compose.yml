@@ -10,19 +10,6 @@ services:
       - ./healing-data:/app/healing-data
       - ./test-results:/app/test-results
       - ./playwright-report:/app/playwright-report
-    networks:
-      - healing-network
-
-  backend:
-    build:
-      context: ./dashboard/backend
-      dockerfile: Dockerfile
-    container_name: healing-backend
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./healing-data:/app/healing-data
     networks:

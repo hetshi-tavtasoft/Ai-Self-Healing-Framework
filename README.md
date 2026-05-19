@@ -31,8 +31,7 @@ ai-self-healing-framework/
 │   │   ├── checkout/checkoutOverviewPage.ts
 │   │   └── checkout/checkoutCompletePage.ts
 │   ├── tests/
-│   │   ├── e2eTest.spec.ts       # Full purchase E2E flow: login → sort → cart → checkout → verify
-│   │   └── healingDemo.spec.ts   # Demonstrates healing engine with intentionally broken locators
+│   │   └── e2eTest.spec.ts       # Full purchase E2E flow: login → sort → cart → checkout → verify
 │   └── utils/
 │       ├── logger.ts             # Singleton logger (INFO, WARN, ERROR, DEBUG)
 │       ├── locatorHelper.ts      # Locator utility wrapper
@@ -47,15 +46,10 @@ ai-self-healing-framework/
 │   │   └── DomParser.ts          # Parses DOM with cheerio, extracts candidates and locators
 │   ├── similarity-engine/
 │   │   └── SimilarityEngine.ts   # Scores candidates (ID 40%, class 30%, text 20%, tag 10%)
-│   ├── healing-validator/
-│   │   └── HealingValidator.ts   # Validates healed locators (exists, visible, unique, clickable)
 │   ├── ai-engine/
 │   │   └── AIEngine.ts           # OpenAI GPT integration for AI-suggested locators
-│   ├── healing-storage/
-│   │   └── HealingStorage.ts     # JSON file-based persistence for healed/failed locators + snapshots
-│   └── persistence/
-│       ├── HealingRecord.ts      # TypeScript interfaces for healing events and run summaries
-│       └── HealingPersistence.ts # Run history, summary stats, flaky detection, screenshot capture
+│   └── healing-validator/
+│       └── HealingValidator.ts   # Validates healed locators (exists, visible, unique, clickable)
 ├── dashboard/
 │   ├── backend/                  # Express REST API serving healing data (port 3000)
 │   └── frontend/                 # React + Vite + Tailwind + Recharts SPA (port 5173)
@@ -73,7 +67,6 @@ ai-self-healing-framework/
 
 ```
 Action fails (click, fill, etc.)
-  → Check cache for previously healed locator
   → Retry original locator up to maxRetries times
   → If all retries fail, trigger healing pipeline:
       1. LocatorAnalyzer captures failure details + DOM snapshot
@@ -82,11 +75,8 @@ Action fails (click, fill, etc.)
       4. If NOT found → SimilarityEngine uses string-similarity on all DOM elements
       5. HealingValidator checks best candidate (exists, visible, unique, clickable)
       6. [Optional] If similarity fails → AIEngine asks GPT for a suggestion
-      7. Save healed locator to storage
-      8. Auto-fix page object source file with new locator
-      9. Clean up old DOM snapshots
+      7. Auto-fix page object source file with new locator
   → Retry action with healed locator
-  → If everything fails, save failed locator record
 ```
 
 ## Tech Stack
