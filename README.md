@@ -1,4 +1,4 @@
-# AI Self-Healing Framework
+# 🚀 AI Self-Healing Framework
 
 A Playwright-based test automation framework with an intelligent self-healing engine that automatically detects and fixes broken locators during test execution. When UI changes cause element selectors to fail, the healing engine analyzes the DOM, scores alternative locators via similarity algorithms and optional OpenAI GPT suggestions, validates replacements, caches them for future runs, and can even auto-fix page object source files.
 

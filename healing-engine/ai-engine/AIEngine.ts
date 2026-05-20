@@ -52,47 +52,64 @@ export class AIEngine {
       return null;
     }
 
-    try {
-      const prompt = this.buildPrompt(failedLocator, domSnapshot, error);
-      
-      this.logger.info('Requesting AI healing suggestion...');
-      
-      const response = await this.openai.chat.completions.create({
-        model: config.ai.model || 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a Playwright locator healing expert. Analyze the failed locator and DOM, then suggest the best alternative locator. Return only the locator string, nothing else.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 200
-      });
+    const models = [
+      config.ai.model,
+      'gpt-4o-mini',
+      'gpt-4o',
+      'gpt-3.5-turbo',
+    ].filter(Boolean) as string[];
 
-      const suggestedLocator = response.choices[0]?.message?.content?.trim();
-      
-      if (!suggestedLocator) {
-        this.logger.warn('AI returned empty suggestion');
+    const prompt = this.buildPrompt(failedLocator, domSnapshot, error);
+    const deduplicated = [...new Set(models)];
+
+    for (const model of deduplicated) {
+      try {
+        this.logger.info(`Requesting AI healing suggestion (model: ${model})...`);
+
+        const response = await this.openai.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a Playwright locator healing expert. Analyze the failed locator and DOM, then suggest the best alternative locator. Return only the locator string, nothing else.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 200
+        });
+
+        const suggestedLocator = response.choices[0]?.message?.content?.trim();
+
+        if (!suggestedLocator) {
+          this.logger.warn(`AI model ${model} returned empty suggestion`);
+          continue;
+        }
+
+        this.logger.info(`AI (${model}) suggested locator: ${suggestedLocator}`);
+
+        return {
+          originalLocator: failedLocator,
+          suggestedLocator,
+          confidence: 0.85,
+          reasoning: `AI (${model}) suggested based on DOM analysis`
+        };
+
+      } catch (error: any) {
+        if (error?.status === 404 || error?.code === 'model_not_found') {
+          this.logger.warn(`Model ${model} not available, trying next...`);
+          continue;
+        }
+        this.logger.error(`AI healing request failed with model ${model}`, error);
         return null;
       }
-
-      this.logger.info(`AI suggested locator: ${suggestedLocator}`);
-
-      return {
-        originalLocator: failedLocator,
-        suggestedLocator: suggestedLocator,
-        confidence: 0.85, // AI suggestions are given high confidence
-        reasoning: `AI suggested based on DOM analysis`
-      };
-
-    } catch (error: any) {
-      this.logger.error('AI healing request failed', error);
-      return null;
     }
+
+    this.logger.error('All AI models exhausted, none succeeded');
+    return null;
   }
 
   private buildPrompt(failedLocator: string, domSnapshot: string, error: string): string {

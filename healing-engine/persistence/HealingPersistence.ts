@@ -3,13 +3,21 @@ import * as path from 'path';
 import { HealingRecord, HealingRunSummary } from './HealingRecord';
 
 export class HealingPersistence {
+  private static instance: HealingPersistence;
   private healingDataDir: string;
   private currentRunId: string;
 
-  constructor() {
+  private constructor() {
     this.healingDataDir = path.resolve(__dirname, '../../healing-data');
     this.currentRunId = `run-${Date.now()}`;
     this.ensureDirectories();
+  }
+
+  static getInstance(): HealingPersistence {
+    if (!HealingPersistence.instance) {
+      HealingPersistence.instance = new HealingPersistence();
+    }
+    return HealingPersistence.instance;
   }
 
   private ensureDirectories(): void {

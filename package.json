@@ -8,6 +8,7 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "test:ui": "playwright test --ui",
+    "check:locators": "npx tsx framework/utils/locatorHealthChecker.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "install:playwright": "playwright install"

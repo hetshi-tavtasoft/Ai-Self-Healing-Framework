@@ -164,6 +164,48 @@ app.get('/api/runs/:runId', (req: Request, res: Response) => {
   }
 });
 
+const LOCATOR_REPORT_PATH = path.resolve(__dirname, '../../locator-health-report.md');
+
+app.get('/api/locators/health', (req: Request, res: Response) => {
+  try {
+    if (!fs.existsSync(LOCATOR_REPORT_PATH)) {
+      return res.json({
+        generated: null,
+        message: 'No report available. Run `npm run check:locators` first.',
+        locators: []
+      });
+    }
+
+    const content = fs.readFileSync(LOCATOR_REPORT_PATH, 'utf-8');
+    const locators: { page: string; name: string; locator: string; status: string }[] = [];
+
+    const tableRegex = /\| ([^|]+) \| ([^|]+) \| `([^`]+)` \| ([✅❌]) \|/g;
+    let match;
+    while ((match = tableRegex.exec(content)) !== null) {
+      locators.push({
+        page: match[1].trim(),
+        name: match[2].trim(),
+        locator: match[3].trim(),
+        status: match[4] === '✅' ? 'passed' : 'failed'
+      });
+    }
+
+    const total = locators.length;
+    const passed = locators.filter(l => l.status === 'passed').length;
+
+    res.json({
+      generated: fs.statSync(LOCATOR_REPORT_PATH).mtime.toISOString(),
+      total,
+      passed,
+      failed: total - passed,
+      healthPercent: total > 0 ? Math.round((passed / total) * 100) : 0,
+      locators
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read locator health report' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Healing Dashboard Backend running on http://localhost:${PORT}`);
 });

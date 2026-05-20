@@ -26,7 +26,7 @@ export class RetryEngine {
     this.similarityEngine = new SimilarityEngine();
     this.aiEngine = new AIEngine();
     this.validator = new HealingValidator(page);
-    this.persistence = new HealingPersistence();
+    this.persistence = HealingPersistence.getInstance();
     this.logger = Logger.getInstance();
     if (pageName) {
       this.pageName = pageName;
