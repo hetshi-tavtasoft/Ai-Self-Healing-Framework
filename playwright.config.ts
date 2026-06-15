@@ -1,3 +1,8 @@
+import { File } from 'buffer';
+if (typeof globalThis.File === 'undefined') {
+  (globalThis as any).File = File;
+}
+
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
