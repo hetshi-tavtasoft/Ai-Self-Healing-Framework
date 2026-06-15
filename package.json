@@ -10,7 +10,7 @@
     "test:ui": "playwright test --ui",
     "check:locators": "npx tsx framework/utils/locatorHealthChecker.ts",
     "build": "tsc",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint .",
     "install:playwright": "playwright install"
   },
   "keywords": [
@@ -23,11 +23,14 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@playwright/test": "^1.45.0",
     "@types/dotenv": "^6.1.1",
     "@types/node": "^20.14.0",
     "@types/string-similarity": "^4.0.2",
-    "typescript": "^5.4.5"
+    "eslint": "^9.0.0",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.0.0"
   },
   "dependencies": {
     "@faker-js/faker": "^9.4.0",

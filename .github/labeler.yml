@@ -1,0 +1,27 @@
+framework:
+  - framework/**/*
+
+healing-engine:
+  - healing-engine/**/*
+
+dashboard:
+  - dashboard/**/*
+
+docker:
+  - Dockerfile
+  - docker-compose.yml
+  - .dockerignore
+  - dashboard/**/Dockerfile
+
+ci:
+  - .github/**/*
+
+documentation:
+  - README.md
+  - .env.example
+
+config:
+  - tsconfig.json
+  - playwright.config.ts
+  - package.json
+  - package-lock.json
