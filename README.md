@@ -35,6 +35,7 @@ ai-self-healing-framework/
 │   └── utils/
 │       ├── logger.ts             # Singleton logger (INFO, WARN, ERROR, DEBUG)
 │       ├── locatorHelper.ts      # Locator utility wrapper
+│       ├── locatorHealthChecker.ts # Pre-flight locator validation (reads page classes)
 │       ├── testData/testData.ts  # Static SauceDemo credentials
 │       └── dataFactory/userData.ts # Faker-generated checkout data
 ├── healing-engine/                # Self-healing system
@@ -56,12 +57,15 @@ ai-self-healing-framework/
 ├── healing-data/                  # Runtime data (healed locators, snapshots, history)
 ├── playwright-report/             # Generated HTML/JSON test reports
 ├── test-results/                  # Test run artifacts (screenshots, videos, traces)
+├── global-setup.ts                # Pre-test setup: clears history + runs locator health check
 ├── docker-compose.yml             # 3-service orchestration
 ├── Dockerfile                     # Test runner container (mcr.microsoft.com/playwright)
 ├── playwright.config.ts           # Playwright config (Chromium, Firefox, WebKit)
 ├── tsconfig.json                  # TypeScript strict config with path aliases
 └── package.json                   # Dependencies: playwright, cheerio, openai, string-similarity, faker
 ```
+
+> **Locator discovery:** Each page object exposes its locators via a `static locators` property (e.g., `LoginPage.locators`). The health checker reads this property directly — locators live only in the page objects, with zero duplication.
 
 ### How Healing Works
 
@@ -128,6 +132,8 @@ Key settings in `framework/config/config.ts`:
 | `healing.similarityThreshold` | `0.7` | Minimum similarity score (0-1) |
 | `healing.strategies` | `['id', 'class', 'text', 'css', 'xpath']` | Locator types to try during healing |
 | `healing.autoFixSource` | `true` | Auto-rewrite page object `.ts` files with healed locators |
+| `healthCheck.enabled` | `true` | Enable pre-flight locator validation before tests |
+| `healthCheck.abortOnFailure` | `false` | Abort test run if locators are broken (default: warn and continue) |
 | `ai.enabled` | `true` | Enable AI-powered healing fallback |
 | `ai.provider` | `'openai'` | AI provider |
 | `ai.model` | `'gpt-4-turbo'` | AI model for locator suggestions |
