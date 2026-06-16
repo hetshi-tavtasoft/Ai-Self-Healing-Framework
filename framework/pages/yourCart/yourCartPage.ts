@@ -2,15 +2,21 @@ import { type Page } from '@playwright/test';
 import { BasePage } from '../BasePage';
 
 export class YourCartPage extends BasePage {
+  static locators = {
+    itemPrice: '.inventory_item_price',
+    checkoutButton: '#checkout',
+    title: '.title',
+  } as const;
+
   readonly itemPrice: string;
   readonly checkoutButton: string;
   readonly title: string;
 
   constructor(page: Page) {
     super(page, 'YourCartPage');
-    this.itemPrice = '.inventory_item_price';
-    this.checkoutButton = '#checkout';
-    this.title = '.title';
+    this.itemPrice = YourCartPage.locators.itemPrice;
+    this.checkoutButton = YourCartPage.locators.checkoutButton;
+    this.title = YourCartPage.locators.title;
   }
 
   async getPrice(): Promise<number> {

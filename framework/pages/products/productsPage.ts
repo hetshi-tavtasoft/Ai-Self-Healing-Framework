@@ -2,6 +2,14 @@ import { type Page } from '@playwright/test';
 import { BasePage } from '../BasePage';
 
 export class ProductPage extends BasePage {
+  static locators = {
+    sortingField: '.product_sort_container',
+    sortingDropdown: '.product_sort_container',
+    price: '.inventory_item_price',
+    title: '.title',
+    cartContainer: 'a.shopping_cart_link',
+  } as const;
+
   readonly sortingField: string;
   readonly sortingDropdown: string;
   readonly price: string;
@@ -10,11 +18,11 @@ export class ProductPage extends BasePage {
 
   constructor(page: Page) {
     super(page, 'ProductPage');
-    this.sortingField = '.product_sort_container';
-    this.sortingDropdown = '.product_sort_container';
-    this.price = '.inventory_item_price';
-    this.title = '.title';
-    this.cartContainer = 'a.shopping_cart_link';
+    this.sortingField = ProductPage.locators.sortingField;
+    this.sortingDropdown = ProductPage.locators.sortingDropdown;
+    this.price = ProductPage.locators.price;
+    this.title = ProductPage.locators.title;
+    this.cartContainer = ProductPage.locators.cartContainer;
   }
 
   async clickOnSortingContainer(): Promise<void> {

@@ -1,7 +1,14 @@
-import { type Page, type Locator } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import { BasePage } from '../BasePage';
 
 export class LoginPage extends BasePage {
+  static locators = {
+    usernameInput: '#user-name',
+    passwordInput: '#password',
+    loginButton: '#login-button',
+    title: '.login_logo',
+  } as const;
+
   readonly usernameInput: string;
   readonly passwordInput: string;
   readonly loginButton: string;
@@ -9,10 +16,10 @@ export class LoginPage extends BasePage {
 
   constructor(page: Page) {
     super(page, 'LoginPage');
-    this.usernameInput = '#user-name';
-    this.passwordInput = '#password';
-    this.loginButton = '#login-button';
-    this.title = '.login_logo';
+    this.usernameInput = LoginPage.locators.usernameInput;
+    this.passwordInput = LoginPage.locators.passwordInput;
+    this.loginButton = LoginPage.locators.loginButton;
+    this.title = LoginPage.locators.title;
   }
 
   async navigate(): Promise<void> {

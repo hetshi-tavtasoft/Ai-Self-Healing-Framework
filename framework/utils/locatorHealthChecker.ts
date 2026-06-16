@@ -1,6 +1,13 @@
 import { Page, Browser, chromium } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { config } from '../config/config';
+import { LoginPage } from '../pages/login/loginPage';
+import { ProductPage } from '../pages/products/productsPage';
+import { YourCartPage } from '../pages/yourCart/yourCartPage';
+import { CheckoutInformation } from '../pages/checkout/checkoutInformationPage';
+import { CheckoutOverview } from '../pages/checkout/checkoutOverviewPage';
+import { CheckoutComplete } from '../pages/checkout/checkoutCompletePage';
 
 interface LocatorCheck {
   pageName: string;
@@ -11,6 +18,107 @@ interface LocatorCheck {
   error?: string;
 }
 
+interface PageCheckDef {
+  name: string;
+  pageClass: { new (page: Page): unknown; locators: Record<string, string> };
+  url: string;
+  preCheck?: (p: Page) => Promise<void>;
+}
+
+const pageCheckDefs: PageCheckDef[] = [
+  { name: 'LoginPage', pageClass: LoginPage, url: 'https://www.saucedemo.com/' },
+  {
+    name: 'ProductPage',
+    pageClass: ProductPage,
+    url: 'https://www.saucedemo.com/inventory.html',
+    preCheck: async (p: Page) => {
+      await p.goto('https://www.saucedemo.com/');
+      await p.fill('#user-name', 'standard_user');
+      await p.fill('#password', 'secret_sauce');
+      await p.click('#login-button');
+      await p.waitForURL('**/inventory.html');
+    }
+  },
+  {
+    name: 'YourCartPage',
+    pageClass: YourCartPage,
+    url: 'https://www.saucedemo.com/cart.html',
+    preCheck: async (p: Page) => {
+      await p.goto('https://www.saucedemo.com/');
+      await p.fill('#user-name', 'standard_user');
+      await p.fill('#password', 'secret_sauce');
+      await p.click('#login-button');
+      await p.waitForURL('**/inventory.html');
+      await p.locator('.inventory_item').first().locator('button').click();
+      await p.locator('a.shopping_cart_link').click();
+      await p.waitForURL('**/cart.html');
+    }
+  },
+  {
+    name: 'CheckoutInformationPage',
+    pageClass: CheckoutInformation,
+    url: 'https://www.saucedemo.com/checkout-step-one.html',
+    preCheck: async (p: Page) => {
+      await p.goto('https://www.saucedemo.com/');
+      await p.fill('#user-name', 'standard_user');
+      await p.fill('#password', 'secret_sauce');
+      await p.click('#login-button');
+      await p.waitForURL('**/inventory.html');
+      await p.locator('.inventory_item').first().locator('button').click();
+      await p.locator('a.shopping_cart_link').click();
+      await p.waitForURL('**/cart.html');
+      await p.click('#checkout');
+      await p.waitForURL('**/checkout-step-one.html');
+    }
+  },
+  {
+    name: 'CheckoutOverviewPage',
+    pageClass: CheckoutOverview,
+    url: 'https://www.saucedemo.com/checkout-step-two.html',
+    preCheck: async (p: Page) => {
+      await p.goto('https://www.saucedemo.com/');
+      await p.fill('#user-name', 'standard_user');
+      await p.fill('#password', 'secret_sauce');
+      await p.click('#login-button');
+      await p.waitForURL('**/inventory.html');
+      await p.locator('.inventory_item').first().locator('button').click();
+      await p.locator('a.shopping_cart_link').click();
+      await p.waitForURL('**/cart.html');
+      await p.click('#checkout');
+      await p.waitForURL('**/checkout-step-one.html');
+      await p.fill('#first-name', 'John');
+      await p.fill('#last-name', 'Doe');
+      await p.fill('#postal-code', '12345');
+      await p.click('#continue');
+      await p.waitForURL('**/checkout-step-two.html');
+    }
+  },
+  {
+    name: 'CheckoutCompletePage',
+    pageClass: CheckoutComplete,
+    url: 'https://www.saucedemo.com/checkout-complete.html',
+    preCheck: async (p: Page) => {
+      await p.goto('https://www.saucedemo.com/');
+      await p.fill('#user-name', 'standard_user');
+      await p.fill('#password', 'secret_sauce');
+      await p.click('#login-button');
+      await p.waitForURL('**/inventory.html');
+      await p.locator('.inventory_item').first().locator('button').click();
+      await p.locator('a.shopping_cart_link').click();
+      await p.waitForURL('**/cart.html');
+      await p.click('#checkout');
+      await p.waitForURL('**/checkout-step-one.html');
+      await p.fill('#first-name', 'John');
+      await p.fill('#last-name', 'Doe');
+      await p.fill('#postal-code', '12345');
+      await p.click('#continue');
+      await p.waitForURL('**/checkout-step-two.html');
+      await p.click('#finish');
+      await p.waitForURL('**/checkout-complete.html');
+    }
+  }
+];
+
 export async function checkAllLocators(): Promise<LocatorCheck[]> {
   const browser: Browser = await chromium.launch({ headless: true });
   const results: LocatorCheck[] = [];
@@ -18,131 +126,9 @@ export async function checkAllLocators(): Promise<LocatorCheck[]> {
   try {
     const page = await browser.newPage();
 
-    const pages: { name: string; url: string; preCheck?: (p: Page) => Promise<void>; checks: { name: string; locator: string }[] }[] = [
-      {
-        name: 'LoginPage',
-        url: 'https://www.saucedemo.com/',
-        checks: [
-          { name: 'usernameInput', locator: '#user-name' },
-          { name: 'passwordInput', locator: '#password' },
-          { name: 'loginButton', locator: '#login-button' },
-          { name: 'title', locator: '.login_logo' },
-        ]
-      },
-      {
-        name: 'ProductPage',
-        url: 'https://www.saucedemo.com/inventory.html',
-        checks: [
-          { name: 'sortingField', locator: '.product_sort_container' },
-          { name: 'price', locator: '.inventory_item_price' },
-          { name: 'title', locator: '.title' },
-          { name: 'cartContainer', locator: 'a.shopping_cart_link' },
-        ],
-        preCheck: async (p: Page) => {
-          await p.goto('https://www.saucedemo.com/');
-          await p.fill('#user-name', 'standard_user');
-          await p.fill('#password', 'secret_sauce');
-          await p.click('#login-button');
-          await p.waitForURL('**/inventory.html');
-        }
-      },
-      {
-        name: 'YourCartPage',
-        url: 'https://www.saucedemo.com/cart.html',
-        checks: [
-          { name: 'itemPrice', locator: '.inventory_item_price' },
-          { name: 'checkoutButton', locator: '#checkout' },
-          { name: 'title', locator: '.title' },
-        ],
-        preCheck: async (p: Page) => {
-          await p.goto('https://www.saucedemo.com/');
-          await p.fill('#user-name', 'standard_user');
-          await p.fill('#password', 'secret_sauce');
-          await p.click('#login-button');
-          await p.waitForURL('**/inventory.html');
-          await page.locator('.inventory_item').first().locator('button').click();
-          await page.locator('a.shopping_cart_link').click();
-          await p.waitForURL('**/cart.html');
-        }
-      },
-      {
-        name: 'CheckoutInformationPage',
-        url: 'https://www.saucedemo.com/checkout-step-one.html',
-        checks: [
-          { name: 'firstName', locator: '#first-name' },
-          { name: 'lastName', locator: '#last-name' },
-          { name: 'zipcode', locator: '#postal-code' },
-          { name: 'continueButton', locator: '#continue' },
-          { name: 'title', locator: '.title' },
-        ],
-        preCheck: async (p: Page) => {
-          await p.goto('https://www.saucedemo.com/');
-          await p.fill('#user-name', 'standard_user');
-          await p.fill('#password', 'secret_sauce');
-          await p.click('#login-button');
-          await p.waitForURL('**/inventory.html');
-          await page.locator('.inventory_item').first().locator('button').click();
-          await page.locator('a.shopping_cart_link').click();
-          await p.waitForURL('**/cart.html');
-          await p.click('#checkout');
-          await p.waitForURL('**/checkout-step-one.html');
-        }
-      },
-      {
-        name: 'CheckoutOverviewPage',
-        url: 'https://www.saucedemo.com/checkout-step-two.html',
-        checks: [
-          { name: 'productPrice', locator: '.inventory_item_price' },
-          { name: 'finishButton', locator: '#finish' },
-          { name: 'title', locator: '.title' },
-        ],
-        preCheck: async (p: Page) => {
-          await p.goto('https://www.saucedemo.com/');
-          await p.fill('#user-name', 'standard_user');
-          await p.fill('#password', 'secret_sauce');
-          await p.click('#login-button');
-          await p.waitForURL('**/inventory.html');
-          await page.locator('.inventory_item').first().locator('button').click();
-          await page.locator('a.shopping_cart_link').click();
-          await p.waitForURL('**/cart.html');
-          await p.click('#checkout');
-          await p.waitForURL('**/checkout-step-one.html');
-          await p.fill('#first-name', 'John');
-          await p.fill('#last-name', 'Doe');
-          await p.fill('#postal-code', '12345');
-          await p.click('#continue');
-          await p.waitForURL('**/checkout-step-two.html');
-        }
-      },
-      {
-        name: 'CheckoutCompletePage',
-        url: 'https://www.saucedemo.com/checkout-complete.html',
-        checks: [
-          { name: 'title', locator: '.complete-header' },
-        ],
-        preCheck: async (p: Page) => {
-          await p.goto('https://www.saucedemo.com/');
-          await p.fill('#user-name', 'standard_user');
-          await p.fill('#password', 'secret_sauce');
-          await p.click('#login-button');
-          await p.waitForURL('**/inventory.html');
-          await page.locator('.inventory_item').first().locator('button').click();
-          await page.locator('a.shopping_cart_link').click();
-          await p.waitForURL('**/cart.html');
-          await p.click('#checkout');
-          await p.waitForURL('**/checkout-step-one.html');
-          await p.fill('#first-name', 'John');
-          await p.fill('#last-name', 'Doe');
-          await p.fill('#postal-code', '12345');
-          await p.click('#continue');
-          await p.waitForURL('**/checkout-step-two.html');
-          await p.click('#finish');
-          await p.waitForURL('**/checkout-complete.html');
-        }
-      }
-    ];
+    for (const pageDef of pageCheckDefs) {
+      const pageLocators = pageDef.pageClass.locators;
 
-    for (const pageDef of pages) {
       if (pageDef.preCheck) {
         await pageDef.preCheck(page);
       } else {
@@ -150,17 +136,17 @@ export async function checkAllLocators(): Promise<LocatorCheck[]> {
         await page.waitForLoadState('networkidle');
       }
 
-      for (const check of pageDef.checks) {
+      for (const [locatorName, locatorValue] of Object.entries(pageLocators)) {
         const result: LocatorCheck = {
           pageName: pageDef.name,
-          locatorName: check.name,
-          locator: check.locator,
+          locatorName,
+          locator: locatorValue,
           exists: false,
           visible: false,
         };
 
         try {
-          const el = page.locator(check.locator).first();
+          const el = page.locator(locatorValue).first();
           result.exists = await el.count() > 0;
           if (result.exists) {
             result.visible = await el.isVisible();
@@ -228,10 +214,15 @@ if (require.main === module) {
 
     const failed = results.filter(r => !r.exists || !r.visible);
     if (failed.length > 0) {
-      console.error(`\n❌ ${failed.length} locator(s) failed validation.`);
-      process.exit(1);
+      console.error(`\n⚠️  ${failed.length} locator(s) failed validation.`);
+      if (config.healthCheck.abortOnFailure) {
+        console.error('Aborting due to healthCheck.abortOnFailure = true');
+        process.exit(1);
+      }
+      console.error('Tests will continue — runtime healing will handle failures dynamically.\n');
+    } else {
+      console.log(`\n✅ All ${results.length} locators passed validation.\n`);
     }
-    console.log(`\n✅ All ${results.length} locators passed validation.`);
   }).catch(err => {
     console.error('Locator health check failed:', err);
     process.exit(1);

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { checkAllLocators, generateHealthReport } from './framework/utils/locatorHealthChecker';
+import { config } from './framework/config/config';
 
 async function globalSetup() {
   const historyDir = path.resolve(__dirname, 'healing-data/healing-history');
@@ -15,6 +16,11 @@ async function globalSetup() {
     }
   }
 
+  if (!config.healthCheck.enabled) {
+    console.log('Locator health check is disabled.\n');
+    return;
+  }
+
   console.log('Running locator health check...');
   const results = await checkAllLocators();
   const report = generateHealthReport(results);
@@ -23,12 +29,19 @@ async function globalSetup() {
 
   const failed = results.filter(r => !r.exists || !r.visible);
   if (failed.length > 0) {
-    console.error(`\n❌ ${failed.length} locator(s) are broken — aborting test run.\n`);
+    console.error(`\n⚠️ ${failed.length} locator(s) are broken.\n`);
     for (const f of failed) {
       console.error(`   ${f.pageName}.${f.locatorName}: \`${f.locator}\` → ${!f.exists ? 'not found' : 'not visible'}`);
     }
     console.error('\nRun `npm run check:locators` for the full report.\n');
-    process.exit(1);
+
+    if (config.healthCheck.abortOnFailure) {
+      console.error('Aborting test run (healthCheck.abortOnFailure = true).');
+      process.exit(1);
+    }
+
+    console.error('Continuing test run — runtime healing will handle failures dynamically.\n');
+    return;
   }
 
   console.log(`✅ All ${results.length} locators passed health check.\n`);

@@ -8,6 +8,14 @@ export interface UserDetails {
 }
 
 export class CheckoutInformation extends BasePage {
+  static locators = {
+    firstName: '#first-name',
+    lastName: '#last-name',
+    zipcode: '#postal-code',
+    continueButton: '#continue',
+    title: '.title',
+  } as const;
+
   readonly title: string;
   readonly firstName: string;
   readonly lastName: string;
@@ -16,11 +24,11 @@ export class CheckoutInformation extends BasePage {
 
   constructor(page: Page) {
     super(page, 'CheckoutInformationPage');
-    this.title = '.title';
-    this.firstName = '#first-name';
-    this.lastName = '#last-name';
-    this.zipcode = '#postal-code';
-    this.continueButton = '#continue';
+    this.title = CheckoutInformation.locators.title;
+    this.firstName = CheckoutInformation.locators.firstName;
+    this.lastName = CheckoutInformation.locators.lastName;
+    this.zipcode = CheckoutInformation.locators.zipcode;
+    this.continueButton = CheckoutInformation.locators.continueButton;
   }
 
   async getTitleText(): Promise<string> {

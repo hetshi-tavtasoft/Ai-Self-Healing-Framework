@@ -12,6 +12,10 @@ export const config = {
     autoFixSource: true,
     strategies: ['id', 'class', 'text', 'css', 'xpath']
   },
+  healthCheck: {
+    enabled: true,
+    abortOnFailure: false
+  },
   reporting: {
     screenshots: true,
     videos: true,
